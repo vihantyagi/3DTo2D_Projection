@@ -1,8 +1,10 @@
 import tkinter as tk
 import math
 from itertools import combinations
+import itertools
 import numpy as np
 import sys
+import csv 
 
 class ObjectDisplay:
 
@@ -19,11 +21,12 @@ class ObjectDisplay:
             lines = file.readlines()        
         
         num_vertices, num_edges = int(lines[0].split(',')[0]), int(lines[0].split(',')[1])
-
+        
         for i in range(1, num_vertices+1):
             v, x, y, z = lines[i].strip().split(',')
             # Convert coordinates to numpy array
             self.vertices[int(v)] = np.array([float(x), float(y), float(z)])
+        self.assign_colour()
 
         # Copy vertices for transformations
         self.vertices_c = {k: v.copy() for k, v in self.vertices.items()}
@@ -56,6 +59,23 @@ class ObjectDisplay:
 
         # Draw the object initially
         self.draw_object()
+
+    def assign_colour(self):
+        """
+        Assign each vertex a distinct color so you can follow the movements more clearly as you rotate it. 
+        """
+        with open('colors.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            color_list = next(reader)
+
+        self.vertex_colors = {
+            vid: color
+            for vid, color in zip(
+                self.vertices.keys(),
+                itertools.cycle(color_list)
+            )
+        }
+
 
     def center_vertices(self):
         """
@@ -113,7 +133,7 @@ class ObjectDisplay:
         for vertex in self.vertices.keys():
             px, py = projected_vertices[vertex]
             # drawing oval on vertices
-            self.canvas.create_oval(px-5, py+5, px+5, py-5, fill="blue")
+            self.canvas.create_oval(px-10, py+10, px+10, py-10, fill=self.vertex_colors[vertex])
                 
         for edge in self.edges:
             combinations_of_2 = list(combinations(edge, 2))
