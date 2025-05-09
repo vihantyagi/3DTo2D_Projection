@@ -49,7 +49,6 @@ Where:
 
 ```bash
 python part1.py object.txt  # For basic wireframe display
-python part2.py object.txt  # For colored face display
 ```
 
 ## Requirements
@@ -57,28 +56,3 @@ python part2.py object.txt  # For colored face display
 - Python 3.x
 - NumPy
 - Tkinter (usually comes with Python)
-
-## Demo
-
-![Wireframe Demo](wireframe_demo.gif)
-
-## Development Notes
-
-This project was developed as a technical assessment to demonstrate 3D graphics fundamentals without using dedicated 3D graphics libraries. It showcases understanding of:
-
-- 3D to 2D projection algorithms
-- Matrix transformations
-- Interactive graphics
-- Color interpolation based on viewing angle
-- Face normal calculation
-
-## Future Improvements
-
-- Add support for more 3D file formats
-- Implement Z-buffer algorithm for more accurate depth handling
-- Add lighting effects and texture mapping
-- Support for mesh subdivision and higher polygon counts
-
----
-
-*Note: This project does not use any 3D graphics libraries or packages - all 3D mathematics and projections are implemented manually to demonstrate understanding of the underlying concepts.*
