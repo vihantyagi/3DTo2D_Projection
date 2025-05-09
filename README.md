@@ -4,7 +4,12 @@ A Python implementation for visualizing and interacting with 3D objects using 2D
 
 ## Overview
 
-This project implements a 3D wireframe viewer that renders 3D objects as wireframes using only 2D graphics primitives. The application allows for interactive rotation of 3D objects using mouse controls, with object faces colored according to their orientation relative to the viewer.
+This project implements a 3D wireframe viewer that renders 3D objects as wireframes using only 2D graphics primitives. 
+
+## Demo
+
+<img width="1693" alt="Screenshot 2025-05-09 at 3 15 49 PM" src="https://github.com/user-attachments/assets/bcbac641-e0de-411a-b39a-9caf40138ce5" />
+
 
 ## Features
 
