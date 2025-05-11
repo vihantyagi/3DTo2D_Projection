@@ -8,7 +8,9 @@ This project implements a 3D wireframe viewer that renders 3D objects as wirefra
 
 ## Demo
 
-<img width="1693" alt="Screenshot 2025-05-09 at 3 15 49 PM" src="https://github.com/user-attachments/assets/bcbac641-e0de-411a-b39a-9caf40138ce5" />
+https://github.com/user-attachments/assets/d61d55d3-9c55-4da9-8ae0-e210d33b376d
+https://github.com/user-attachments/assets/bfce1421-7bb8-474b-82e2-d7d0e4925045
+
 
 
 ## Features
