@@ -8,7 +8,7 @@ This project implements a 3D wireframe viewer that renders 3D objects as wirefra
 
 ## Demo
 
-https://github.com/user-attachments/assets/d61d55d3-9c55-4da9-8ae0-e210d33b376d
+[![Watch the video](https://raw.githubusercontent.com/vihantyagi/3DTo2D_Projection/main/demo/vid1_thumbnail.png)](https://raw.githubusercontent.com/vihantyagi/3DTo2D_Projection/main/demo/vid1.mov)
 https://github.com/user-attachments/assets/bfce1421-7bb8-474b-82e2-d7d0e4925045
 
 
