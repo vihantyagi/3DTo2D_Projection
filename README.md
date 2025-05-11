@@ -24,16 +24,12 @@ https://github.com/user-attachments/assets/46e4daab-7267-49c9-86b9-c094a93a9206
   - Vertical movement rotates around X-axis
   - Diagonal movement combines both rotations
 - **Normalized Scaling**: Objects are automatically scaled to fit optimally in the display window
-- **Shaded Faces** (Part 2): Faces are colored based on their angle to the viewer
-  - Color varies smoothly from #00005F (when viewed on edge) to #0000FF (when viewed flat)
 
 ## Technical Implementation
 
 - **Pure 2D Graphics**: Implements 3D visualization using only 2D drawing primitives
 - **Orthographic Projection**: Projects 3D coordinates onto a 2D plane assuming infinite viewer distance
 - **Matrix-Based Rotation**: Uses rotation matrices to avoid gimbal lock
-- **Face Normal Calculation**: Computes face normals to determine shading
-- **Depth Sorting**: Correctly handles face overlap by rendering from back to front
 
 ## File Format
 
