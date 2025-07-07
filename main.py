@@ -4,11 +4,21 @@ from itertools import combinations
 import itertools
 import numpy as np
 import sys
-import csv 
+import csv
+import threading
+import time
+
+# Try to import hand tracking (optional)
+try:
+    from hand_tracker import HandTracker
+    HAND_TRACKING_AVAILABLE = True
+except ImportError:
+    HAND_TRACKING_AVAILABLE = False
+    print("Hand tracking not available. Install opencv-python and mediapipe for camera support.") 
 
 class ObjectDisplay:
 
-    def __init__(self, root, object_path):
+    def __init__(self, root, object_path, control_mode=1):
         
         # percieved distance of object from viewer. 
         self.d = 10 
@@ -47,18 +57,34 @@ class ObjectDisplay:
         
         # Store rotation as a matrix instead of angles to avoid gimbal lock
         self.rotation_matrix = np.identity(3)  
-
+        
+        # Control mode: 0 = camera, 1 = mouse
+        self.control_mode = control_mode
+        
+        # Hand tracking variables
+        self.hand_tracker = None
+        self.hand_tracking_enabled = False
+        self.current_pose = None
+        self.tracking_thread = None
+        self.running = True
+        
         # Add new variables for tracking closest vertex and mouse position
         self.closest_vertex = None
         self.center, self.centered_vertices = None, {} 
         self.center_vertices()
         
-        # Bind mouse events for rotation
-        self.canvas.bind("<ButtonPress-1>", self.mouse_click)
-        self.canvas.bind("<B1-Motion>", self.calc_angle)
-
+        # Initialize control mode first
+        self.setup_control_mode()
+        
+        # Create control panel after control mode is set
+        self.create_control_panel(root)
+        
         # Draw the object initially
         self.draw_object()
+        
+        # Start update loop if using hand tracking (after mode is finalized)
+        if self.control_mode == 0 and self.hand_tracking_enabled:
+            self.update_loop()
 
     def assign_colour(self):
         """
@@ -93,7 +119,111 @@ class ObjectDisplay:
         self.center = sum_pos / len(self.vertices)
         print(f"Object center: {self.center}")
 
-        self.centered_vertices = {k: v - self.center for k, v in self.vertices.items()} 
+        self.centered_vertices = {k: v - self.center for k, v in self.vertices.items()}
+        
+    def create_control_panel(self, root):
+        """Create control panel for display options"""
+        control_frame = tk.Frame(root)
+        control_frame.pack(pady=10)
+        
+        # Control mode display
+        mode_text = "Camera Control" if self.control_mode == 0 else "Mouse Control"
+        tk.Label(control_frame, text=f"Mode: {mode_text}", 
+                font=("Arial", 12, "bold")).pack(side=tk.LEFT, padx=10)
+        
+        # Reset button
+        tk.Button(control_frame, text="Reset Pose", 
+                 command=self.reset_pose).pack(side=tk.LEFT, padx=5)
+        
+        # Sensitivity slider (only for camera mode)
+        if self.control_mode == 0:
+            tk.Label(control_frame, text="Sensitivity:").pack(side=tk.LEFT, padx=5)
+            self.sensitivity_var = tk.DoubleVar(value=1.0)
+            tk.Scale(control_frame, from_=0.1, to=3.0, resolution=0.1, 
+                    orient=tk.HORIZONTAL, variable=self.sensitivity_var).pack(side=tk.LEFT, padx=5)
+            
+            # Hand tracking status
+            self.status_label = tk.Label(control_frame, text="Initializing...", fg="blue")
+            self.status_label.pack(side=tk.LEFT, padx=10)
+    
+    def setup_control_mode(self):
+        """Setup the appropriate control mode"""
+        if self.control_mode == 0:  # Camera control
+            print("TEST 1 - CONTROL MODE 0 - CAMERA")
+            if HAND_TRACKING_AVAILABLE:
+                self.hand_tracking_enabled = True
+                self.start_hand_tracking()
+            else:
+                print("Hand tracking not available. Falling back to mouse control.")
+                self.control_mode = 1
+                self.setup_mouse_control()
+        else:  # Mouse control
+            print("TEST 1 - CONTROL MODE 1 - MOUSE")
+            self.setup_mouse_control()
+    
+    def setup_mouse_control(self):
+        """Setup mouse control bindings"""
+        print("TEST 2 - CONTROL MODE 1 - MOUSE")
+        self.canvas.bind("<ButtonPress-1>", self.mouse_click)
+        self.canvas.bind("<B1-Motion>", self.calc_angle)
+    
+    def start_hand_tracking(self):
+        """Start hand tracking in a separate thread"""
+        print("TEST 2 - CONTROL MODE 0 - CAMERA")
+        if self.tracking_thread is None or not self.tracking_thread.is_alive():
+            self.tracking_thread = threading.Thread(target=self.hand_tracking_loop, daemon=True)
+            self.tracking_thread.start()
+    
+    def hand_tracking_loop(self):
+        """Main hand tracking loop running in separate thread"""
+        try:
+            self.hand_tracker = HandTracker()
+            self.update_status("Hand tracking active")
+        except Exception as e:
+            self.update_status(f"Hand tracking failed: {str(e)}")
+            return
+            
+        while self.running and self.hand_tracking_enabled:
+            try:
+                pose, frame = self.hand_tracker.get_pose_update()
+                
+                if pose:
+                    self.current_pose = pose
+                    self.update_status("Hand detected")
+                else:
+                    self.update_status("No hand detected")
+                
+                # Show camera feed
+                if frame is not None:
+                    import cv2
+                    cv2.imshow('Hand Tracking - Press q to close', frame)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        self.running = False
+                        break
+                        
+            except Exception as e:
+                print(f"Hand tracking error: {e}")
+                time.sleep(0.1)
+    
+    def update_status(self, message):
+        """Update status label safely from thread"""
+        if hasattr(self, 'status_label'):
+            self.status_label.config(text=message)
+    
+    def update_loop(self):
+        """Main update loop for camera mode"""
+        if self.running:
+            self.draw_object()
+            self.canvas.after(30, self.update_loop)  # Update at ~30 FPS
+    
+    def reset_pose(self):
+        """Reset pose to original position"""
+        self.rotation_matrix = np.identity(3)
+        self.current_pose = None
+        if self.control_mode == 0:
+            self.draw_object()
+        else:
+            self.draw_object() 
 
     def project_3d_to_2d(self, coords):
         """ project the 3d coordinates to 2d plane"""
@@ -125,9 +255,9 @@ class ObjectDisplay:
         """ draw the 2d projection of the 3d object """
 
         self.canvas.delete("all")
-        self.rotate_3d()  # Apply rotation to vertices
+        self.apply_transforms()  # Apply appropriate transforms based on control mode
         
-        # Project and draw the rotated verticesvertices
+        # Project and draw the transformed vertices
         projected_vertices = dict(map(lambda x: (x, self.project_3d_to_2d(self.vertices_c[x])), self.vertices_c))
 
         for vertex in self.vertices.keys():
@@ -169,7 +299,10 @@ class ObjectDisplay:
         ])
 
     def calc_angle(self, e):
-        """Handle mouse drag for rotation"""
+        """Handle mouse drag for rotation (mouse mode only)"""
+        if self.control_mode == 0:  # Skip if in camera mode
+            return
+            
         # Calculate mouse movement
         dx = e.x - self.previous_x
         dy = e.y - self.previous_y
@@ -201,21 +334,67 @@ class ObjectDisplay:
         
         # Redraw with new orientation
         self.draw_object()
+    
+    def cleanup(self):
+        """Clean up resources"""
+        self.running = False
+        if self.hand_tracker:
+            self.hand_tracker.cleanup()
+        try:
+            import cv2
+            cv2.destroyAllWindows()
+        except:
+            pass
 
-    def rotate_3d(self):
-        """Apply the current rotation matrix to all vertices"""
-        # Apply rotation to each vertex
-        for vid, coords in self.centered_vertices.items():            
-
-            # Apply the accumulated rotation matrix
-            rotated_coords = self.rotation_matrix @ coords
+    def apply_transforms(self):
+        """Apply transforms based on control mode"""
+        for vid, coords in self.centered_vertices.items():
+            # Start with the original centered coordinates
+            transformed_coords = coords.copy()
             
-            # Store the rotated coordinates (still centered)
-            self.vertices_c[vid] = rotated_coords
+            # Apply hand tracking transforms if in camera mode
+            if self.control_mode == 0 and self.hand_tracking_enabled and self.current_pose:
+                # Apply hand tracking rotation
+                hand_rotation = self.current_pose['rotation_matrix']
+                transformed_coords = hand_rotation @ transformed_coords
+                
+                # Apply hand tracking translation
+                hand_translation = self.current_pose['translation']
+                if hasattr(self, 'sensitivity_var'):
+                    transformed_coords += hand_translation * self.sensitivity_var.get()
+                else:
+                    transformed_coords += hand_translation
+            
+            # Apply manual rotation (for mouse mode or additional rotation)
+            transformed_coords = self.rotation_matrix @ transformed_coords
+            
+            # Store the transformed coordinates
+            self.vertices_c[vid] = transformed_coords
     
 if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Display 3D object")
+    if len(sys.argv) < 3:
+        print("Usage: python main.py <object_file> <control_mode>")
+        print("  object_file: Path to the 3D object file")
+        print("  control_mode: 0 for camera (hand tracking), 1 for mouse")
+        print("Example: python main.py objects/object1.txt 0")
+        sys.exit(1)
+    
     filepath = sys.argv[1]
-    tetrahedron_display = ObjectDisplay(root, filepath)
+    control_mode = int(sys.argv[2])
+    
+    if control_mode not in [0, 1]:
+        print("Error: control_mode must be 0 (camera) or 1 (mouse)")
+        sys.exit(1)
+    
+    root = tk.Tk()
+    mode_title = "Camera Control" if control_mode == 0 else "Mouse Control"
+    root.title(f"3D Object Display - {mode_title}")
+    
+    display = ObjectDisplay(root, filepath, control_mode)
+    
+    def on_closing():
+        display.cleanup()
+        root.destroy()
+    
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
